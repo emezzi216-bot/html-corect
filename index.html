@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Studio CCAS | v100 Stable</title>
+    <title>Studio CCAS | v101 Final Design</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        /* --- THEME CYBER --- */
+        /* --- THEME EDITEUR (Garde le mode Cyber pour le travail, c'est plus reposant) --- */
         :root { --bg-dark: #0f111a; --panel: #1a1d2d; --neon: #00f3ff; --gold: #CCA43B; --text-main: #e0e6ed; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--bg-dark); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         * { box-sizing: border-box; outline: none; scrollbar-width: thin; }
@@ -25,7 +25,7 @@
         .btn-neon:hover { background: var(--neon); color: #000; box-shadow: 0 0 10px var(--neon); }
         .btn-danger { border: 1px solid #ff4444; color: #ff4444; background: transparent; }
 
-        /* STRUCTURE */
+        /* HEADER */
         header { height: 60px; background: rgba(15, 17, 26, 0.95); border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 10; }
         
         #dashboard { flex: 1; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding: 40px; }
@@ -45,7 +45,6 @@
         .editor-toolbar { height: 60px; background: var(--panel); border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; }
 
         .content-area { flex: 1; overflow-y: auto; padding: 40px; display: flex; flex-direction: column; align-items: center; gap: 30px; border: 2px dashed transparent; }
-        /* Style quand on drag un FICHIER WINDOWS */
         .content-area.file-drag-over { border-color: var(--neon); background: rgba(0, 243, 255, 0.05); }
 
         /* BLOC PHOTO */
@@ -53,21 +52,13 @@
             width: 100%; max-width: 950px; height: 280px; flex-shrink: 0; 
             background: var(--panel); border: 1px solid #334155; border-radius: 6px; 
             display: flex; overflow: hidden; position: relative; transition: transform 0.2s;
-            cursor: grab; /* Main ouverte pour dire "attrape-moi" */
+            cursor: grab;
         }
         .block:active { cursor: grabbing; box-shadow: 0 5px 20px rgba(0,0,0,0.5); transform: scale(1.01); }
-        
-        /* CIBLE DROP INTERNE */
-        .block.reorder-target { 
-            border: 2px dashed var(--gold); 
-            opacity: 0.6;
-        }
+        .block.reorder-target { border: 2px dashed var(--gold); opacity: 0.6; }
 
         .block-img-area { width: 350px; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; position: relative; flex-shrink: 0; border-right: 1px solid #334155; }
-        
-        /* IMPORTANT : Empêche l'image d'être draggée seule, on veut le bloc ! */
         .block-img-area img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
-        
         .block-txt-area { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; min-width: 0; }
         .txt-tools { display: flex; gap: 5px; padding: 8px; background: rgba(0,0,0,0.2); border-bottom: 1px solid #334155; flex-shrink: 0; }
         .txt-btn { background: #2a2f45; border: 1px solid #475569; color: #fff; cursor: pointer; border-radius: 3px; font-weight: bold; font-size: 12px; padding: 4px 8px; }
@@ -77,7 +68,6 @@
         .block-img-area:hover .block-tools { opacity: 1; }
         .tool-btn { background: rgba(0,0,0,0.8); color: var(--neon); border: 1px solid var(--neon); width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; font-size: 16px; }
 
-        /* MODAL */
         #paint-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 2000; display: none; flex-direction: column; }
     </style>
 </head>
@@ -149,13 +139,13 @@
     </div>
 
 <script>
-const DB_N="CCAS_V100_STABLE", DB_V=1; let db, cP=null, cB=null, app={projects:{}, sets:{logo:null}};
-let draggedBat = null; // Pour les bâtiments
-let draggedPhIdx = null; // Pour les photos
+const DB_N="CCAS_V101_FINAL", DB_V=1; let db, cP=null, cB=null, app={projects:{}, sets:{logo:null}};
+let draggedBat = null;
+let draggedPhIdx = null;
 
 window.onload=async()=>{ await iDB(); await lLogo(); rDash(); initDragDrop(); };
 
-// --- 1. DRAG & DROP ROBUSTE (LA SOLUTION) ---
+// --- 1. DRAG & DROP ROBUSTE ---
 function triggerPhotoInput() {
     if(!cB) { alert("⚠️ Sélectionnez d'abord une rubrique !"); return; }
     document.getElementById('inp-photos').click();
@@ -163,36 +153,20 @@ function triggerPhotoInput() {
 
 function initDragDrop() {
     const area = document.getElementById('area-content');
-    
-    // Empêcher l'ouverture du fichier dans le navigateur
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
         area.addEventListener(e, (ev) => { ev.preventDefault(); ev.stopPropagation(); }, false);
     });
-
-    // SURVOL DU CONTENEUR (Seulement pour les Fichiers Windows)
     area.addEventListener('dragover', (e) => {
-        // Astuce : si on ne déplace pas une photo interne (draggedPhIdx === null), c'est un fichier
-        if (draggedPhIdx === null) {
-            area.classList.add('file-drag-over');
-        }
+        if (draggedPhIdx === null) area.classList.add('file-drag-over');
     });
-
     area.addEventListener('dragleave', () => area.classList.remove('file-drag-over'));
-
-    // DROP SUR LE CONTENEUR (Seulement Fichiers Windows)
     area.addEventListener('drop', (e) => {
         area.classList.remove('file-drag-over');
-        // Si c'est un déplacement interne, on arrête tout ici, c'est le bloc qui gère (voir rCont)
-        if (draggedPhIdx !== null) return; 
-
-        // Si ce sont des fichiers Windows
-        if(e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            processFiles(e.dataTransfer.files);
-        }
+        if (draggedPhIdx !== null) return;
+        if(e.dataTransfer.files && e.dataTransfer.files.length > 0) processFiles(e.dataTransfer.files);
     });
 }
 
-// Fonction de traitement des fichiers
 function processFiles(files) {
     if(!cB) { alert("⚠️ Sélectionnez une rubrique !"); return; }
     document.getElementById('toast').innerText = "⏳ Traitement...";
@@ -230,7 +204,7 @@ function processFiles(files) {
 function processInput(i){ if(i.files && i.files.length>0) processFiles(i.files); i.value=''; }
 
 
-// --- 2. AFFICHAGE ET TRI INTERNE (C'EST ICI QUE CA SE JOUE) ---
+// --- 2. AFFICHAGE ET TRI INTERNE ---
 function rCont(){ 
     const a=document.getElementById('area-content'); a.innerHTML=''; 
     document.getElementById('lbl-bat').innerText=cB||"Veuillez créer une rubrique";
@@ -245,53 +219,20 @@ function rCont(){
     phs.forEach((p,i)=>{
         const b=document.createElement('div'); 
         b.className='block';
-        b.draggable = true; // IMPORTANT
-
-        // 1. DÉBUT DU DRAG (Mémorise l'index de départ)
-        b.ondragstart = (e) => { 
-            draggedPhIdx = i; 
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', i); // Hack pour Firefox
-            setTimeout(() => b.style.opacity = '0.5', 0);
-        };
-
-        // 2. FIN DU DRAG (Nettoyage)
-        b.ondragend = () => {
-            draggedPhIdx = null;
-            b.style.opacity = '1';
-            // Nettoie toutes les cibles
-            document.querySelectorAll('.block').forEach(el => el.classList.remove('reorder-target'));
-        };
-
-        // 3. SURVOL D'UNE CIBLE (Visualisation)
-        b.ondragover = (e) => { 
-            e.preventDefault(); // Nécessaire pour autoriser le drop
-            if(draggedPhIdx !== null && draggedPhIdx !== i) {
-                b.classList.add('reorder-target');
-            }
-        };
-
+        b.draggable = true;
+        b.ondragstart = (e) => { draggedPhIdx = i; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', i); setTimeout(() => b.style.opacity = '0.5', 0); };
+        b.ondragend = () => { draggedPhIdx = null; b.style.opacity = '1'; document.querySelectorAll('.block').forEach(el => el.classList.remove('reorder-target')); };
+        b.ondragover = (e) => { e.preventDefault(); if(draggedPhIdx !== null && draggedPhIdx !== i) b.classList.add('reorder-target'); };
         b.ondragleave = () => { b.classList.remove('reorder-target'); };
-
-        // 4. LE DROP INTERNE (L'Échange)
         b.ondrop = (e) => {
-            e.preventDefault();
-            e.stopPropagation(); // EMPÊCHE DE MONTER VERS LE CONTAINER DE FICHIERS
-            b.classList.remove('reorder-target');
-
-            // Si c'est un déplacement interne valide
+            e.preventDefault(); e.stopPropagation(); b.classList.remove('reorder-target');
             if(draggedPhIdx !== null && draggedPhIdx !== i) {
                 const list = app.projects[cP].rubs[cB];
-                // On retire l'élément
                 const item = list.splice(draggedPhIdx, 1)[0];
-                // On l'insère à la nouvelle position
                 list.splice(i, 0, item);
-                
-                sData();
-                rCont();
+                sData(); rCont();
             }
         };
-
         b.innerHTML=`<div class="block-img-area"><img src="${p.src}"><div class="block-tools"><div class="tool-btn" onclick="paint(${i})">✏️</div><div class="tool-btn" style="border-color:#ff4444; color:#ff4444;" onclick="delPh(${i})">🗑️</div></div></div>
         <div class="block-txt-area"><div class="txt-tools"><button class="txt-btn" onmousedown="fmt('bold',event)">B</button><button class="txt-btn" onmousedown="fmt('italic',event)">I</button><button class="txt-btn" onmousedown="fmt('underline',event)">U</button><button class="txt-btn" onmousedown="fmt('insertUnorderedList',event)">• Liste</button><button class="txt-btn" onmousedown="fmt('foreColor',event,'#ff4444')" style="color:#ff4444">A</button></div>
         <div class="rich-editor" contenteditable="true" oninput="upTxt(${i},this.innerHTML)">${p.txt||''}</div></div>`;
@@ -299,7 +240,7 @@ function rCont(){
     });
 }
 
-// --- 3. DATABASE & NAVIGATION (STANDARD) ---
+// --- 3. CORE FUNCTIONS ---
 function iDB(){ return new Promise(r=>{ const q=indexedDB.open(DB_N,DB_V); q.onupgradeneeded=e=>{e.target.result.createObjectStore('s',{keyPath:'id'})}; q.onsuccess=e=>{db=e.target.result; lData().then(r)}; }); }
 function lData(){ return new Promise(r=>{ db.transaction('s').objectStore('s').get('d').onsuccess=e=>{if(e.target.result)app=e.target.result.v; r()}; }); }
 function sData(){ db.transaction('s','readwrite').objectStore('s').put({id:'d',v:app}); }
@@ -355,33 +296,61 @@ function savePaint(){ app.projects[cP].rubs[cB][pIdx].src=cvs.toDataURL('image/j
 function closePaint(){ document.getElementById('paint-modal').style.display='none'; }
 function stressTest() { if(!confirm("Créer 200 photos de test ?")) return; const id = 'p_simu_' + Date.now(); const newProj = { name: "SIMULATION CHARGE (200)", date: Date.now(), rubs: {}, ord: [] }; const cv = document.createElement('canvas'); cv.width=350; cv.height=250; const ctx = cv.getContext('2d'); ctx.fillStyle = "#333"; ctx.fillRect(0,0,350,250); ctx.fillStyle = "#CCA43B"; ctx.font = "bold 30px Arial"; ctx.fillText("SIMULATION", 80, 130); const dImg = cv.toDataURL('image/jpeg', 0.6); const txt = `<div><b>1. Analyse :</b> Test de charge du système.</div><div><b>2. Performance :</b> Vérification scrollbar.</div><div><b>3. Rendu :</b> Test des polices élégantes.</div><div><b>4. Note :</b> Tout semble nominal.</div><div><b>5. Extra :</b> Ligne supplémentaire.</div>`; for(let i=1; i<=25; i++) { const b="Zone "+i; newProj.ord.push(b); newProj.rubs[b]=[]; for(let j=1; j<=8; j++) newProj.rubs[b].push({src: dImg, txt: txt}); } app.projects[id] = newProj; sData(); rDash(); }
 
-// --- ZIP & EXPORT ---
+// --- ZIP & EXPORT AVEC DESIGN CORRIGÉ (BLEU + CADRE FIXE) ---
 function genZip(){ 
     const p=app.projects[cP], z=new JSZip(), l=app.sets.logo||"";
     z.file("BACKUP_SECURITE.json", JSON.stringify({projects:{[cP]:p}, sets:app.sets}));
+    
+    // HTML VIEWER CORRIGÉ : BLEU, SEGOE UI, CADRE FIXE
     const h=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${p.name}</title><style>
-    body{margin:0;font-family:'Segoe UI Light', 'Helvetica Neue', sans-serif;display:flex;height:100vh;background:#f8f9fa;color:#333;overflow:hidden}
-    #s{width:300px;background:#fff;border-right:1px solid #CCA43B;display:flex;flex-direction:column;box-shadow: 2px 0 10px rgba(0,0,0,0.02)}
-    .head{padding:30px 20px;text-align:center;border-bottom:1px solid #eee}
-    .head b {font-family: 'Georgia', serif; font-size: 1.4rem; color:#0A1A3C; letter-spacing: 1px;}
+    body{margin:0;font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;display:flex;height:100vh;background:#0A1A3C;color:#fff;overflow:hidden}
+    
+    /* SIDEBAR BLEU NUIT */
+    #s{width:300px;background:#050E24;border-right:3px solid #CCA43B;display:flex;flex-direction:column;box-shadow: 4px 0 15px rgba(0,0,0,0.5); z-index:10;}
+    .head{padding:30px 20px;text-align:center;border-bottom:1px solid #1f2d40;}
+    .head b {font-size: 1.3rem; color:#CCA43B; text-transform:uppercase; letter-spacing: 1px;}
+    
     #m{flex:1;overflow-y:auto}
-    button{display:block;width:100%;padding:18px 25px;background:none;border:none;color:#666;text-align:left;cursor:pointer;border-bottom:1px solid #f4f4f4;transition:0.3s;font-size:14px; font-family: 'Segoe UI', sans-serif;}
-    button:hover{background:#fcfcfc;color:#000;padding-left:30px;}
-    button.act{color:#CCA43B;font-weight:600;border-left:2px solid #CCA43B;background:#fffdf5}
-    #v{flex:1;display:flex;flex-direction:column;position:relative}
-    #f{flex:1;background:#0f111a;display:flex;justify-content:center;align-items:center;position:relative}
-    #f img{max-width:100%;max-height:100%;object-fit:contain;box-shadow: 0 10px 30px rgba(0,0,0,0.3)}
-    .nav-btn{position:absolute;top:50%;transform:translateY(-50%);font-size:24px;cursor:pointer;width:40px;height:40px;background:rgba(255,255,255,0.1);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:10;transition:0.2s;border:1px solid rgba(255,255,255,0.2)}
-    .nav-btn:hover{background:#CCA43B;border-color:#CCA43B;color:#000}
-    .p{left:20px} .n{right:20px}
-    #i{height:200px;background:#fff;color:#333;padding:30px 50px;overflow-y:auto;border-top:1px solid #CCA43B}
-    #t{color:#CCA43B;margin:0 0 15px 0;text-transform:uppercase;font-family:'Georgia', serif;font-size:1.1rem;letter-spacing:1px;border-bottom:1px solid #eee;padding-bottom:10px;display:inline-block}
-    #d{font-size:16px;line-height:1.6;font-weight:300;color:#444}
-    #d b {font-weight:600; color:#0A1A3C;}
+    button{display:block;width:100%;padding:18px 25px;background:none;border:none;color:#8E8E93;text-align:left;cursor:pointer;border-bottom:1px solid #111;transition:0.3s;font-size:14px; font-family:'Segoe UI', sans-serif;}
+    button:hover{background:#111;color:#fff;padding-left:30px;}
+    button.act{color:#CCA43B;font-weight:bold;border-left:4px solid #CCA43B;background:rgba(204,164,59,0.1)}
+    
+    /* VIEWER BLEU & CADRE OR FIXE */
+    #v{flex:1;display:flex;flex-direction:column;position:relative;background:radial-gradient(circle at center,#142850,#0A1A3C);}
+    #f{flex:1;display:flex;justify-content:center;align-items:center;position:relative;padding:20px;}
+    
+    /* LE CADRE FIXE IMPOSSIBLE A BOUGER */
+    .frame-container {
+        width: 80%;
+        height: 70%;
+        border: 4px solid #CCA43B; /* CADRE OR */
+        background: #000;
+        display: flex; justify-content: center; align-items: center;
+        box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+    }
+    .frame-container img {
+        width: 100%; height: 100%;
+        object-fit: contain; /* L'IMAGE S'ADAPTE SANS DEFORMER LE CADRE */
+    }
+
+    .nav-btn{position:absolute;top:50%;transform:translateY(-50%);font-size:30px;cursor:pointer;width:50px;height:50px;background:rgba(10,26,60,0.8);color:#CCA43B;border:2px solid #CCA43B;border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:20;transition:0.2s;}
+    .nav-btn:hover{background:#CCA43B;color:#000;}
+    .p{left:30px} .n{right:30px}
+    
+    /* TEXTE BAS PROPRE */
+    #i{height:180px;background:rgba(5,14,36,0.95);color:#fff;padding:30px 50px;overflow-y:auto;border-top:4px solid #CCA43B; z-index:15;}
+    #t{color:#CCA43B;margin:0 0 15px 0;text-transform:uppercase;font-weight:bold;font-size:1.1rem;letter-spacing:1px;border-bottom:1px solid #1f2d40;padding-bottom:10px;display:inline-block}
+    #d{font-size:16px;line-height:1.6;font-weight:300;color:#e0e6ed;}
+    #d b {font-weight:700; color:#fff;}
     </style></head><body>
     <div id="s"><div class="head">${l?'<img src="'+l+'" style="height:55px;margin-bottom:15px"><br>':''}<b>${p.name}</b></div><div id="m"></div></div>
-    <div id="v"><div id="f"><div class="nav-btn p" onclick="mv(-1)">❮</div><img id="img"><div class="nav-btn n" onclick="mv(1)">❯</div></div><div id="i"><div id="t"></div><div id="d"></div></div></div>
-    <script>const d=${JSON.stringify(p.rubs)}, o=${JSON.stringify(p.ord)}; let cB=o[0], cI=0; function r(){document.getElementById('m').innerHTML=o.map(k=>'<button onclick="c(\\''+k+'\\')" class="'+(k==cB?'act':'')+'">'+k+'</button>').join('');const ps=d[cB];if(!ps||!ps.length){document.getElementById('img').src='';document.getElementById('t').innerText=cB;document.getElementById('d').innerHTML='<i style="color:#ccc">Aucune photo</i>';return}document.getElementById('img').src=ps[cI].src;document.getElementById('t').innerText=cB;document.getElementById('d').innerHTML=ps[cI].txt;}function c(k){cB=k;cI=0;r()}function mv(v){const ps=d[cB];if(ps){cI=(cI+v+ps.length)%ps.length;r()}}window.onload=r;document.addEventListener('keydown',e=>{if(e.key==="ArrowRight")mv(1);if(e.key==="ArrowLeft")mv(-1)});<\/script></body></html>`;
+    <div id="v"><div id="f"><div class="nav-btn p" onclick="mv(-1)">❮</div>
+    
+    <div class="frame-container"><img id="img"></div>
+    
+    <div class="nav-btn n" onclick="mv(1)">❯</div></div><div id="i"><div id="t"></div><div id="d"></div></div></div>
+    <script>const d=${JSON.stringify(p.rubs)}, o=${JSON.stringify(p.ord)}; let cB=o[0], cI=0; function r(){document.getElementById('m').innerHTML=o.map(k=>'<button onclick="c(\\''+k+'\\')" class="'+(k==cB?'act':'')+'">'+k+'</button>').join('');const ps=d[cB];if(!ps||!ps.length){document.getElementById('img').src='';document.getElementById('t').innerText=cB;document.getElementById('d').innerHTML='<i style="color:#666">Aucune photo</i>';return}document.getElementById('img').src=ps[cI].src;document.getElementById('t').innerText=cB;document.getElementById('d').innerHTML=ps[cI].txt;}function c(k){cB=k;cI=0;r()}function mv(v){const ps=d[cB];if(ps){cI=(cI+v+ps.length)%ps.length;r()}}window.onload=r;document.addEventListener('keydown',e=>{if(e.key==="ArrowRight")mv(1);if(e.key==="ArrowLeft")mv(-1)});<\/script></body></html>`;
+    
     z.file(p.name+".html",h); z.generateAsync({type:"blob"}).then(c=>{const a=document.createElement('a'); a.href=URL.createObjectURL(c); a.download=p.name+".zip"; a.click()}); 
 }
 </script>
