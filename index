@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VISUALISEUR CCAS | V9.2 FINAL</title>
+    <style>
+        :root { --blue: #0A1A3C; --gold: #CCA43B; --bg: #f4f4f9; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: var(--bg); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* HEADER SIMPLIFIÉ */
+        header { background: var(--blue); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 5px solid var(--gold); flex-shrink: 0; }
+        h1 { margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* BOUTON D'IMPORTATION ORANGE */
+        .btn-import { background: #e67e22; color: white; border: none; padding: 12px 25px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s; }
+        .btn-import:hover { background: #d35400; }
+        
+        /* ZONE PRINCIPALE */
+        #interface { display: none; flex: 1; height: 100%; overflow: hidden; }
+        
+        /* SIDEBAR (BÂTIMENTS) */
+        #sidebar { width: 250px; background: white; border-right: 1px solid #ddd; overflow-y: auto; flex-shrink: 0; }
+        .bat-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; color: var(--blue); font-weight: 500; }
+        .bat-item:hover { background: #f0f0f0; }
+        .bat-item.active { background: var(--gold); color: var(--blue); font-weight: bold; }
+        
+        /* ZONE DE CONTENU (SCROLLABLE) */
+        #main-area { flex: 1; overflow-y: auto; padding: 30px; display: flex; flex-direction: column; gap: 30px; align-items: center; }
+        
+        /* LE BLOC V9.2 (LA CORRECTION QUE TU VEUX) */
+        .card { 
+            display: flex; 
+            flex-direction: row; /* Image Gauche / Texte Droite */
+            width: 95%; max-width: 1400px; 
+            background: white; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            overflow: hidden; 
+            min-height: 350px; /* Hauteur minimale confortable */
+            border: 1px solid #ddd;
+        }
+        
+        /* IMAGE : TAILLE MAÎTRISÉE */
+        .card-img { 
+            width: 400px; /* Largeur fixe : ne bouffe pas l'écran */
+            background: black; 
+            display: flex; align-items: center; justify-content: center; 
+            flex-shrink: 0;
+        }
+        .card-img img { 
+            max-width: 100%; max-height: 100%; 
+            object-fit: contain; 
+        }
+        
+        /* TEXTE : PLACE MAXIMALE & GROS CARACTÈRES */
+        .card-txt { 
+            flex: 1; 
+            padding: 30px; 
+            font-size: 22px; /* TEXTE LISIBLE SANS ZOOM */
+            line-height: 1.5; 
+            color: #2c3e50; 
+            overflow-y: auto; 
+            background: white;
+        }
+        
+        /* LOADER */
+        #loader { position: fixed; inset: 0; background: rgba(10,26,60,0.95); z-index: 999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--gold); text-align: center; display: none; }
+        
+        /* RESPONSIVE : Si l'écran est vraiment petit, on passe en colonne mais proprement */
+        @media (max-width: 1000px) {
+            .card { flex-direction: column; height: auto; }
+            .card-img { width: 100%; height: 300px; }
+            .card-txt { height: auto; min-height: 200px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loader">
+        <h2 style="font-size:30px">TRAITEMENT V9.2...</h2>
+        <p>Réorganisation des 175 photos en cours.</p>
+    </div>
+
+    <header>
+        <h1>STUDIO CCAS | V9.2</h1>
+        <div>
+            <button class="btn-import" onclick="document.getElementById('fileInput').click()">📂 CHARGER MON RAPPORT HTML</button>
+            <button class="btn-import" style="background:#27ae60; margin-left:10px; display:none;" id="btn-save" onclick="sauvegarder()">💾 SAUVEGARDER LA V9.2</button>
+        </div>
+    </header>
+
+    <input type="file" id="fileInput" style="display:none" accept=".html" onchange="processFile(this)">
+
+    <div id="interface">
+        <div id="sidebar"></div>
+        <div id="main-area">
+            <div style="text-align:center; color:#888; margin-top:50px;">
+                <h3>👈 Clique sur un bâtiment à gauche pour voir les photos</h3>
+            </div>
+        </div>
+    </div>
+
+    <div id="welcome" style="flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column; color:#666;">
+        <div style="font-size:60px; margin-bottom:20px;">🏗️</div>
+        <h2>Aucun fichier chargé</h2>
+        <p>Clique sur le bouton orange en haut pour importer ton rapport buggé.</p>
+    </div>
+
+<script>
+    let globalData = {}; // Pour stocker les données propres
+
+    function processFile(input) {
+        if (input.files.length === 0) return;
+        document.getElementById('loader').style.display = 'flex';
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const content = e.target.result;
+            // REGEX PUISSANTE POUR TROUVER LE JSON PEU IMPORTE LE BORDEL AUTOUR
+            const match = content.match(/\{"[\s\S]*"\}/g);
+            
+            if (match) {
+                // On prend le plus long match JSON trouvé (souvent le bon dans un fichier HTML)
+                try {
+                    const cleanJson = match.sort((a,b) => b.length - a.length)[0];
+                    globalData = JSON.parse(cleanJson);
+                    initInterface(globalData);
+                } catch (err) {
+                    alert("Erreur de lecture du fichier. Le format est trop endommagé.");
+                    document.getElementById('loader').style.display = 'none';
+                }
+            } else {
+                alert("Impossible de trouver les données des photos dans ce fichier.");
+                document.getElementById('loader').style.display = 'none';
+            }
+        };
+        reader.readAsText(input.files[0]);
+    }
+
+    function initInterface(data) {
+        document.getElementById('welcome').style.display = 'none';
+        document.getElementById('interface').style.display = 'flex';
+        document.getElementById('btn-save').style.display = 'inline-block';
+        
+        const sidebar = document.getElementById('sidebar');
+        sidebar.innerHTML = '';
+        const buildings = Object.keys(data);
+        
+        buildings.forEach((bat, index) => {
+            const div = document.createElement('div');
+            div.className = 'bat-item';
+            div.innerText = bat;
+            div.onclick = () => {
+                document.querySelectorAll('.bat-item').forEach(b => b.classList.remove('active'));
+                div.classList.add('active');
+                renderBuilding(bat, data[bat]);
+            };
+            sidebar.appendChild(div);
+            // Ouvrir le premier automatiquement
+            if(index === 0) div.click();
+        });
+        
+        document.getElementById('loader').style.display = 'none';
+    }
+
+    function renderBuilding(name, photos) {
+        const area = document.getElementById('main-area');
+        area.innerHTML = `<h2 style="width:100%; border-bottom:2px solid #CCA43B; padding-bottom:10px; color:#0A1A3C;">🏢 ${name} (${photos.length} photos)</h2>`;
+        
+        photos.forEach(photo => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="card-img">
+                    <img src="${photo.src}" loading="lazy">
+                </div>
+                <div class="card-txt" contenteditable="true">
+                    ${photo.txt || "<em>Aucune description (Cliquez pour écrire)</em>"}
+                </div>
+            `;
+            // Sauvegarde automatique en mémoire locale si on modifie le texte
+            card.querySelector('.card-txt').addEventListener('input', (e) => {
+                photo.txt = e.target.innerHTML;
+            });
+            area.appendChild(card);
+        });
+    }
+
+    function sauvegarder() {
+        // Recréer un fichier HTML propre autonome
+        const jsonStr = JSON.stringify(globalData);
+        const htmlContent = `
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>RAPPORT CCAS V9.2</title>
+<style>body{font-family:sans-serif;margin:0;padding:20px;background:#f4f4f9}
+.b{background:#fff;border:1px solid #ccc;margin-bottom:20px;display:flex;flex-direction:row;}
+.i{width:400px;background:#000;display:flex;align-items:center;justify-content:center;}
+.i img{max-width:100%;max-height:100%;}
+.t{flex:1;padding:20px;font-size:20px;line-height:1.5;}
+h1{color:#0A1A3C;border-bottom:3px solid #CCA43B;}
+@media print{.b{page-break-inside:avoid;}}
+</style></head><body>
+<div id="c"></div>
+<script>
+const d = ${jsonStr};
+const c = document.getElementById('c');
+Object.keys(d).forEach(k => {
+    c.innerHTML += '<h1>'+k+'</h1>';
+    d[k].forEach(p => {
+        c.innerHTML += '<div class="b"><div class="i"><img src="'+p.src+'"></div><div class="t">'+(p.txt||'')+'</div></div>';
+    });
+});
+<\/script></body></html>`;
+        
+        const blob = new Blob([htmlContent], {type: 'text/html'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'RAPPORT_CCAS_V92_FINAL.html';
+        a.click();
+    }
+</script>
+
+</body>
+</html>
