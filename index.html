@@ -3,251 +3,194 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RÉCUPÉRATEUR CCAS ULTIME</title>
+    <title>STUDIO CCAS | V9.2 FINAL</title>
     <style>
-        /* RESET & BASE */
-        :root { --blue: #0A1A3C; --gold: #CCA43B; --bg: #f0f2f5; }
-        body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--bg); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-
-        /* HEADER */
-        header { 
-            background: var(--blue); color: white; padding: 15px 30px; 
-            display: flex; justify-content: space-between; align-items: center; 
-            border-bottom: 5px solid var(--gold); flex-shrink: 0;
-        }
-        h1 { margin: 0; font-size: 24px; font-weight: bold; text-transform: uppercase; }
-
+        :root { --blue: #0A1A3C; --gold: #CCA43B; --bg: #f4f4f9; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: var(--bg); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        
+        /* EN-TÊTE */
+        header { background: var(--blue); color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 5px solid var(--gold); flex-shrink: 0; }
+        h1 { margin: 0; font-size: 18px; text-transform: uppercase; }
+        
         /* BOUTONS */
-        .btn { padding: 12px 25px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s; color: white; }
-        .btn-import { background: #e67e22; } /* Orange */
-        .btn-import:hover { background: #d35400; }
-        .btn-save { background: #27ae60; display: none; } /* Vert */
-        .btn-save:hover { background: #219150; }
+        .btn { border: none; padding: 10px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; color: white; font-size: 14px; margin-left: 10px; }
+        .btn-import { background: #e67e22; }
+        .btn-save { background: #27ae60; display: none; }
 
         /* ZONE PRINCIPALE */
-        #workspace { flex: 1; display: flex; overflow: hidden; position: relative; }
+        #interface { display: none; flex: 1; height: 100%; overflow: hidden; }
         
-        /* LISTE DES BATIMENTS (GAUCHE) */
-        #sidebar { 
-            width: 300px; background: white; border-right: 1px solid #ccc; 
-            overflow-y: auto; flex-shrink: 0; display: none; 
-        }
-        .bat-item { padding: 15px; border-bottom: 1px solid #eee; cursor: pointer; font-weight: 500; color: var(--blue); }
-        .bat-item:hover { background: #f9f9f9; }
+        /* BARRE LATÉRALE (Bâtiments) */
+        #sidebar { width: 220px; background: white; border-right: 1px solid #ddd; overflow-y: auto; flex-shrink: 0; }
+        .bat-item { padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; color: var(--blue); font-size: 14px; }
+        .bat-item:hover { background: #f0f0f0; }
         .bat-item.active { background: var(--gold); color: var(--blue); font-weight: bold; }
-
-        /* ZONE D'AFFICHAGE (DROITE) */
-        #viewer { 
-            flex: 1; overflow-y: auto; padding: 40px; 
-            display: none; flex-direction: column; gap: 30px; align-items: center; 
+        
+        /* ZONE DE CONTENU */
+        #main-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 20px; align-items: center; }
+        
+        /* --- LE FORMAT V9.2 --- */
+        /* C'est ici que tout se joue : Image Gauche / Texte Droite / Zéro Zoom */
+        .card { 
+            display: flex; flex-direction: row; 
+            width: 95%; max-width: 1300px; 
+            background: white; 
+            border: 2px solid #ddd; border-left: 5px solid var(--gold);
+            border-radius: 5px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+            min-height: 350px; /* Hauteur confortable */
         }
-
-        /* --- LE FORMAT V9.2 (Celui que tu veux) --- */
-        .card {
-            display: flex; flex-direction: row; /* COTE A COTE */
-            width: 100%; max-width: 1400px;
-            background: white; border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
-            border: 2px solid #ddd;
-            min-height: 400px; /* Hauteur forcée pour être à l'aise */
-        }
-
-        /* PHOTO A GAUCHE (Taille fixe) */
-        .card-img {
-            width: 450px; /* Largeur fixe : ne bouge pas */
-            background: black;
-            display: flex; align-items: center; justify-content: center;
+        
+        .card-img { 
+            width: 450px; /* Largeur fixe pour l'image */
+            background: black; 
+            display: flex; align-items: center; justify-content: center; 
             flex-shrink: 0;
-            border-right: 4px solid var(--gold);
         }
         .card-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
-
-        /* TEXTE A DROITE (Prend toute la place restante) */
-        .card-txt {
-            flex: 1; 
-            padding: 30px;
-            font-size: 22px; /* TEXTE GROS PAR DEFAUT */
-            line-height: 1.5;
-            color: #333;
-            overflow-y: auto;
-            background: white;
-        }
-
-        /* ECRAN D'ACCUEIL */
-        #welcome { 
-            position: absolute; inset: 0; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            color: #888; text-align: center;
-        }
         
-        /* LOADER */
-        #loader {
-            position: fixed; inset: 0; background: rgba(10,26,60,0.95);
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            color: var(--gold); z-index: 9999;
+        .card-txt { 
+            flex: 1; 
+            padding: 25px; 
+            font-size: 20px; /* TEXTE GROS PAR DÉFAUT */
+            line-height: 1.5; 
+            color: #333; 
+            overflow-y: auto; 
+            background: white;
+            outline: none;
         }
+        .card-txt:focus { background: #fffbe6; } /* Jaune pâle quand on écrit */
+
+        /* ÉCRAN ACCUEIL */
+        #welcome { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #888; }
     </style>
 </head>
 <body>
 
-<input type="file" id="fileInput" style="display:none" onchange="analyserFichier(this)">
+    <header>
+        <h1>STUDIO V9.2 (RECONSTRUCTION)</h1>
+        <div>
+            <button class="btn btn-import" onclick="document.getElementById('fileInput').click()">1. CHARGER L'ANCIEN FICHIER</button>
+            <button class="btn btn-save" id="btn-save" onclick="sauvegarder()">2. SAUVEGARDER LE NOUVEAU (.HTML)</button>
+        </div>
+    </header>
 
-<div id="loader"><h1>⏳ ANALYSE PROFONDE...</h1><p>Recherche des photos dans la mémoire du fichier...</p></div>
+    <input type="file" id="fileInput" style="display:none" accept=".html" onchange="processFile(this)">
 
-<header>
-    <h1>RECONSTRUCTEUR V9.2</h1>
-    <div>
-        <button class="btn btn-import" onclick="document.getElementById('fileInput').click()">📂 1. IMPORTER LE FICHIER BUGGÉ</button>
-        <button class="btn btn-save" id="btnSave" onclick="telecharger()">💾 2. TÉLÉCHARGER LE RAPPORT PROPRE</button>
-    </div>
-</header>
-
-<div id="workspace">
     <div id="welcome">
-        <div style="font-size: 50px;">🗑️ ➔ ✨</div>
-        <h2>Importe ton fichier HTML cassé ci-dessus.</h2>
-        <p>Je vais extraire toutes les photos et reconstruire la mise en page V9.2.</p>
+        <h2>Prêt à reconstruire.</h2>
+        <p>Charge ton fichier (même buggé), je récupère tout et je le range proprement.</p>
     </div>
 
-    <div id="sidebar"></div>
-    
-    <div id="viewer"></div>
-</div>
+    <div id="interface">
+        <div id="sidebar"></div>
+        <div id="main-area"></div>
+    </div>
 
 <script>
-    let BDD = {}; // La base de données reconstruite
+    let globalData = {}; 
 
-    function analyserFichier(input) {
+    function processFile(input) {
         if (input.files.length === 0) return;
-        document.getElementById('loader').style.display = 'flex';
-
         const reader = new FileReader();
         reader.onload = function(e) {
-            const contenu = e.target.result;
+            const content = e.target.result;
+            // On cherche le JSON brutalement
+            const match = content.match(/\{"[\s\S]*"\}/g);
             
-            // 1. EXTRACTION BRUTALE (REGEX)
-            // On cherche n'importe quoi qui ressemble à une structure JSON de données
-            // Le motif cherche : {"NomBatiment": [{"src":...
-            const regex = /\{"[^"]+":\s*\[\{"src"/g;
-            let match = contenu.match(regex);
-            
-            // Si le regex précis échoue, on tente le regex large (tout ce qui est entre accolades)
-            if (!match) {
-                match = contenu.match(/\{"[\s\S]*"\}/g);
-            }
-
             if (match) {
                 try {
-                    // On prend la plus longue chaîne trouvée (c'est forcément la BDD)
-                    let rawJson = match.sort((a,b) => b.length - a.length)[0];
-                    
-                    // Nettoyage si le fichier a été coupé
-                    const lastBrace = rawJson.lastIndexOf('}');
-                    if (lastBrace !== -1) rawJson = rawJson.substring(0, lastBrace + 1);
-
-                    BDD = JSON.parse(rawJson);
-                    
-                    // Si on est là, c'est gagné. On lance l'interface.
-                    lancerInterface();
-                    
+                    // On prend le plus gros bloc JSON trouvé
+                    const cleanJson = match.sort((a,b) => b.length - a.length)[0];
+                    globalData = JSON.parse(cleanJson);
+                    initInterface(globalData);
                 } catch (err) {
-                    alert("J'ai trouvé des données, mais elles sont corrompues. Essaie quand même, je vais afficher ce que je peux.");
-                    console.error(err);
+                    alert("Le fichier est très abîmé, mais je vais essayer de lire ce que je peux.");
                 }
             } else {
-                alert("Impossible de trouver des photos dans ce fichier. Le format est inconnu.");
-                document.getElementById('loader').style.display = 'none';
+                alert("Impossible de trouver les données. Le fichier est vide ou illisible.");
             }
         };
         reader.readAsText(input.files[0]);
     }
 
-    function lancerInterface() {
+    function initInterface(data) {
         document.getElementById('welcome').style.display = 'none';
-        document.getElementById('sidebar').style.display = 'block';
-        document.getElementById('viewer').style.display = 'flex';
-        document.getElementById('btnSave').style.display = 'inline-block';
-        document.getElementById('loader').style.display = 'none';
-
+        document.getElementById('interface').style.display = 'flex';
+        document.getElementById('btn-save').style.display = 'inline-block';
+        
         const sidebar = document.getElementById('sidebar');
-        sidebar.innerHTML = '<div style="padding:15px; font-weight:bold; color:#888;">BÂTIMENTS TROUVÉS :</div>';
+        sidebar.innerHTML = '';
+        const buildings = Object.keys(data);
         
-        const bats = Object.keys(BDD);
-        
-        bats.forEach((bat, index) => {
+        buildings.forEach((bat, index) => {
             const div = document.createElement('div');
             div.className = 'bat-item';
-            div.innerText = `🏢 ${bat} (${BDD[bat].length})`;
+            div.innerText = bat;
             div.onclick = () => {
                 document.querySelectorAll('.bat-item').forEach(b => b.classList.remove('active'));
                 div.classList.add('active');
-                afficherBatiment(bat);
+                renderBuilding(bat, data[bat]);
             };
             sidebar.appendChild(div);
-            if (index === 0) div.click(); // Ouvre le premier direct
+            if(index === 0) div.click();
         });
     }
 
-    function afficherBatiment(nom) {
-        const viewer = document.getElementById('viewer');
-        viewer.innerHTML = `<h2 style="width:100%; border-bottom:2px solid #CCA43B; padding-bottom:10px;">Photos du : ${nom}</h2>`;
+    function renderBuilding(name, photos) {
+        const area = document.getElementById('main-area');
+        area.innerHTML = `<h2 style="width:100%; border-bottom:2px solid #CCA43B; padding-bottom:10px; color:#0A1A3C;">🏢 ${name}</h2>`;
         
-        BDD[nom].forEach(photo => {
+        photos.forEach(photo => {
             const card = document.createElement('div');
             card.className = 'card';
-            
-            // Structure V9.2
             card.innerHTML = `
-                <div class="card-img">
-                    <img src="${photo.src}" loading="lazy">
-                </div>
-                <div class="card-txt" contenteditable="true">
-                    ${photo.txt || "<em>(Clique ici pour ajouter une description)</em>"}
-                </div>
+                <div class="card-img"><img src="${photo.src}" loading="lazy"></div>
+                <div class="card-txt" contenteditable="true">${photo.txt || ""}</div>
             `;
-            
-            // Sauvegarde automatique des modifs de texte dans la mémoire
+            // Mise à jour en temps réel des données pour la sauvegarde
             card.querySelector('.card-txt').addEventListener('input', (e) => {
                 photo.txt = e.target.innerHTML;
             });
-            
-            viewer.appendChild(card);
+            area.appendChild(card);
         });
     }
 
-    function telecharger() {
-        // GÉNÉRATION DU FICHIER FINAL PROPRE
-        const jsonStr = JSON.stringify(BDD);
-        const html = `<!DOCTYPE html>
-<html lang="fr"><head><meta charset="UTF-8"><title>RAPPORT CCAS FINAL</title>
+    function sauvegarder() {
+        const jsonStr = JSON.stringify(globalData);
+        // On génère un fichier propre qui contient ce visualiseur V9.2 intégré
+        // Comme ça le prochain fichier sera aussi propre que celui-ci.
+        const currentCode = document.documentElement.outerHTML;
+        // On remplace juste les données par les nouvelles
+        // (Note: pour simplifier, on refait un HTML simple ici pour la sécurité)
+        
+        const htmlContent = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><title>RAPPORT V9.2</title>
 <style>
-body{font-family:'Segoe UI',sans-serif;background:#0A1A3C;color:white;padding:20px;margin:0;}
-.bat{margin-bottom:50px;}
-.bat h1{color:#CCA43B;border-bottom:3px solid #CCA43B;padding-bottom:10px;}
-.card{display:flex;background:white;color:black;margin-bottom:20px;border:4px solid #CCA43B;min-height:350px;}
-.img{width:400px;background:black;display:flex;align-items:center;justify-content:center;}
-.img img{max-width:100%;max-height:100%;object-fit:contain;}
-.txt{flex:1;padding:30px;font-size:22px;line-height:1.5;}
+body{font-family:'Segoe UI',sans-serif;background:#f4f4f9;padding:20px;}
+.bat{margin-bottom:40px;}
+h1{color:#0A1A3C;border-bottom:3px solid #CCA43B;}
+.card{display:flex;background:white;margin-bottom:20px;border:1px solid #ccc;border-left:5px solid #CCA43B;min-height:350px;}
+.img{width:450px;background:black;display:flex;align-items:center;justify-content:center;}
+.img img{max-width:100%;max-height:100%;}
+.txt{flex:1;padding:25px;font-size:20px;line-height:1.5;}
 </style></head><body>
-<div id="content"></div>
+<div id="c"></div>
 <script>
-const data = ${jsonStr};
-const c = document.getElementById('content');
-Object.keys(data).forEach(k => {
-    const batDiv = document.createElement('div'); batDiv.className='bat';
-    batDiv.innerHTML = '<h1>🏢 '+k+'</h1>';
-    data[k].forEach(p => {
-        batDiv.innerHTML += '<div class="card"><div class="img"><img src="'+p.src+'"></div><div class="txt">'+(p.txt||'')+'</div></div>';
+const d = ${jsonStr};
+const c = document.getElementById('c');
+Object.keys(d).forEach(k => {
+    c.innerHTML += '<h1>'+k+'</h1>';
+    d[k].forEach(p => {
+        c.innerHTML += '<div class="card"><div class="img"><img src="'+p.src+'"></div><div class="txt">'+(p.txt||'')+'</div></div>';
     });
-    c.appendChild(batDiv);
 });
 <\/script></body></html>`;
-
-        const blob = new Blob([html], {type: 'text/html'});
+        
+        const blob = new Blob([htmlContent], {type: 'text/html'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'RAPPORT_CLEAN_V92.html';
+        a.download = 'RAPPORT_V92_FINAL.html';
         a.click();
     }
 </script>
