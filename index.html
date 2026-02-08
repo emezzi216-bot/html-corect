@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Studio CCAS | v99 Reorganisation</title>
+    <title>Studio CCAS | v100 Stable</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         /* --- THEME CYBER --- */
@@ -45,25 +45,29 @@
         .editor-toolbar { height: 60px; background: var(--panel); border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; }
 
         .content-area { flex: 1; overflow-y: auto; padding: 40px; display: flex; flex-direction: column; align-items: center; gap: 30px; border: 2px dashed transparent; }
-        .content-area.drag-over { border-color: var(--neon); background: rgba(0, 243, 255, 0.05); }
+        /* Style quand on drag un FICHIER WINDOWS */
+        .content-area.file-drag-over { border-color: var(--neon); background: rgba(0, 243, 255, 0.05); }
 
         /* BLOC PHOTO */
         .block { 
             width: 100%; max-width: 950px; height: 280px; flex-shrink: 0; 
             background: var(--panel); border: 1px solid #334155; border-radius: 6px; 
             display: flex; overflow: hidden; position: relative; transition: transform 0.2s;
-            cursor: grab; /* Curseur main pour dire "on peut bouger" */
+            cursor: grab; /* Main ouverte pour dire "attrape-moi" */
         }
-        .block:active { cursor: grabbing; }
-        /* Style quand on survole un bloc avec un autre bloc */
-        .block.drag-target { 
-            border: 2px dashed var(--neon); 
-            transform: scale(0.98); 
-            background: rgba(0, 243, 255, 0.05);
+        .block:active { cursor: grabbing; box-shadow: 0 5px 20px rgba(0,0,0,0.5); transform: scale(1.01); }
+        
+        /* CIBLE DROP INTERNE */
+        .block.reorder-target { 
+            border: 2px dashed var(--gold); 
+            opacity: 0.6;
         }
 
         .block-img-area { width: 350px; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; position: relative; flex-shrink: 0; border-right: 1px solid #334155; }
-        .block-img-area img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; /* Empêche le drag fantôme de l'image seule */ }
+        
+        /* IMPORTANT : Empêche l'image d'être draggée seule, on veut le bloc ! */
+        .block-img-area img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+        
         .block-txt-area { flex: 1; display: flex; flex-direction: column; height: 100%; overflow: hidden; min-width: 0; }
         .txt-tools { display: flex; gap: 5px; padding: 8px; background: rgba(0,0,0,0.2); border-bottom: 1px solid #334155; flex-shrink: 0; }
         .txt-btn { background: #2a2f45; border: 1px solid #475569; color: #fff; cursor: pointer; border-radius: 3px; font-weight: bold; font-size: 12px; padding: 4px 8px; }
@@ -145,47 +149,50 @@
     </div>
 
 <script>
-const DB_N="CCAS_V99_SORT", DB_V=1; let db, cP=null, cB=null, app={projects:{}, sets:{logo:null}};
-let draggedBat = null;
-let draggedPhIdx = null; // Variable pour suivre la photo en cours de déplacement
+const DB_N="CCAS_V100_STABLE", DB_V=1; let db, cP=null, cB=null, app={projects:{}, sets:{logo:null}};
+let draggedBat = null; // Pour les bâtiments
+let draggedPhIdx = null; // Pour les photos
 
 window.onload=async()=>{ await iDB(); await lLogo(); rDash(); initDragDrop(); };
 
-// --- 1. GESTION DES FICHIERS ET DU DRAG ---
-
+// --- 1. DRAG & DROP ROBUSTE (LA SOLUTION) ---
 function triggerPhotoInput() {
     if(!cB) { alert("⚠️ Sélectionnez d'abord une rubrique !"); return; }
     document.getElementById('inp-photos').click();
 }
 
-// Initialise le Drag & Drop sur la zone principale
 function initDragDrop() {
     const area = document.getElementById('area-content');
     
-    // Empêche le comportement par défaut (ouvrir l'image dans le navigateur)
+    // Empêcher l'ouverture du fichier dans le navigateur
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
         area.addEventListener(e, (ev) => { ev.preventDefault(); ev.stopPropagation(); }, false);
     });
 
-    // Effet visuel quand on survole la zone avec un FICHIER (Desktop)
+    // SURVOL DU CONTENEUR (Seulement pour les Fichiers Windows)
     area.addEventListener('dragover', (e) => {
-        // Astuce: si draggedPhIdx est null, c'est qu'on drag un fichier externe
-        if(draggedPhIdx === null) area.classList.add('drag-over');
+        // Astuce : si on ne déplace pas une photo interne (draggedPhIdx === null), c'est un fichier
+        if (draggedPhIdx === null) {
+            area.classList.add('file-drag-over');
+        }
     });
 
-    area.addEventListener('dragleave', () => area.classList.remove('drag-over'));
+    area.addEventListener('dragleave', () => area.classList.remove('file-drag-over'));
 
-    // DROP FINAL
+    // DROP SUR LE CONTENEUR (Seulement Fichiers Windows)
     area.addEventListener('drop', (e) => {
-        area.classList.remove('drag-over');
-        // Si c'est des fichiers (Desktop -> App)
+        area.classList.remove('file-drag-over');
+        // Si c'est un déplacement interne, on arrête tout ici, c'est le bloc qui gère (voir rCont)
+        if (draggedPhIdx !== null) return; 
+
+        // Si ce sont des fichiers Windows
         if(e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             processFiles(e.dataTransfer.files);
         }
-        // Si c'est une réorganisation interne, c'est géré par le drop sur le bloc (voir rCont), pas ici.
     });
 }
 
+// Fonction de traitement des fichiers
 function processFiles(files) {
     if(!cB) { alert("⚠️ Sélectionnez une rubrique !"); return; }
     document.getElementById('toast').innerText = "⏳ Traitement...";
@@ -219,11 +226,80 @@ function processFiles(files) {
         };
         reader.readAsDataURL(f);
     });
-    // Si input file utilisé
-    const inp = document.getElementById('inp-photos'); if(inp) inp.value='';
+}
+function processInput(i){ if(i.files && i.files.length>0) processFiles(i.files); i.value=''; }
+
+
+// --- 2. AFFICHAGE ET TRI INTERNE (C'EST ICI QUE CA SE JOUE) ---
+function rCont(){ 
+    const a=document.getElementById('area-content'); a.innerHTML=''; 
+    document.getElementById('lbl-bat').innerText=cB||"Veuillez créer une rubrique";
+    if(!cB) return; 
+    const phs=app.projects[cP].rubs[cB];
+    
+    if(!phs || !phs.length){ 
+        a.innerHTML='<div style="text-align:center;color:#555;margin-top:50px;border:2px dashed #333;padding:40px;border-radius:10px;cursor:pointer;" onclick="triggerPhotoInput()">📂 GLISSEZ VOS PHOTOS ICI<br>ou cliquez pour ajouter</div>'; 
+        return; 
+    }
+    
+    phs.forEach((p,i)=>{
+        const b=document.createElement('div'); 
+        b.className='block';
+        b.draggable = true; // IMPORTANT
+
+        // 1. DÉBUT DU DRAG (Mémorise l'index de départ)
+        b.ondragstart = (e) => { 
+            draggedPhIdx = i; 
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', i); // Hack pour Firefox
+            setTimeout(() => b.style.opacity = '0.5', 0);
+        };
+
+        // 2. FIN DU DRAG (Nettoyage)
+        b.ondragend = () => {
+            draggedPhIdx = null;
+            b.style.opacity = '1';
+            // Nettoie toutes les cibles
+            document.querySelectorAll('.block').forEach(el => el.classList.remove('reorder-target'));
+        };
+
+        // 3. SURVOL D'UNE CIBLE (Visualisation)
+        b.ondragover = (e) => { 
+            e.preventDefault(); // Nécessaire pour autoriser le drop
+            if(draggedPhIdx !== null && draggedPhIdx !== i) {
+                b.classList.add('reorder-target');
+            }
+        };
+
+        b.ondragleave = () => { b.classList.remove('reorder-target'); };
+
+        // 4. LE DROP INTERNE (L'Échange)
+        b.ondrop = (e) => {
+            e.preventDefault();
+            e.stopPropagation(); // EMPÊCHE DE MONTER VERS LE CONTAINER DE FICHIERS
+            b.classList.remove('reorder-target');
+
+            // Si c'est un déplacement interne valide
+            if(draggedPhIdx !== null && draggedPhIdx !== i) {
+                const list = app.projects[cP].rubs[cB];
+                // On retire l'élément
+                const item = list.splice(draggedPhIdx, 1)[0];
+                // On l'insère à la nouvelle position
+                list.splice(i, 0, item);
+                
+                sData();
+                rCont();
+            }
+        };
+
+        b.innerHTML=`<div class="block-img-area"><img src="${p.src}"><div class="block-tools"><div class="tool-btn" onclick="paint(${i})">✏️</div><div class="tool-btn" style="border-color:#ff4444; color:#ff4444;" onclick="delPh(${i})">🗑️</div></div></div>
+        <div class="block-txt-area"><div class="txt-tools"><button class="txt-btn" onmousedown="fmt('bold',event)">B</button><button class="txt-btn" onmousedown="fmt('italic',event)">I</button><button class="txt-btn" onmousedown="fmt('underline',event)">U</button><button class="txt-btn" onmousedown="fmt('insertUnorderedList',event)">• Liste</button><button class="txt-btn" onmousedown="fmt('foreColor',event,'#ff4444')" style="color:#ff4444">A</button></div>
+        <div class="rich-editor" contenteditable="true" oninput="upTxt(${i},this.innerHTML)">${p.txt||''}</div></div>`;
+        a.appendChild(b);
+    });
 }
 
-// --- 2. DATABASE ---
+// --- 3. DATABASE & NAVIGATION (STANDARD) ---
 function iDB(){ return new Promise(r=>{ const q=indexedDB.open(DB_N,DB_V); q.onupgradeneeded=e=>{e.target.result.createObjectStore('s',{keyPath:'id'})}; q.onsuccess=e=>{db=e.target.result; lData().then(r)}; }); }
 function lData(){ return new Promise(r=>{ db.transaction('s').objectStore('s').get('d').onsuccess=e=>{if(e.target.result)app=e.target.result.v; r()}; }); }
 function sData(){ db.transaction('s','readwrite').objectStore('s').put({id:'d',v:app}); }
@@ -231,7 +307,6 @@ function lLogo(){ return new Promise(r=>{ const i=document.getElementById('sys-l
 function uL(){ const l=document.getElementById('app-logo'); if(app.sets.logo){l.src=app.sets.logo;l.style.display='block'} }
 function c64(i,cb){ const c=document.createElement('canvas'); c.width=i.naturalWidth; c.height=i.naturalHeight; c.getContext('2d').drawImage(i,0,0); cb(c.toDataURL()); }
 
-// --- 3. NAVIGATION ---
 function rDash(){ 
     document.getElementById('dashboard').style.display='flex'; document.getElementById('studio').style.display='none';
     const g=document.getElementById('grid'); g.innerHTML='';
@@ -266,68 +341,6 @@ function rSide(){
 function addBat(){ const n=prompt("Nom rubrique :"); if(n&&!app.projects[cP].rubs[n]){ app.projects[cP].rubs[n]=[]; app.projects[cP].ord.push(n); sData(); oBat(n); rSide(); } }
 function delBat(k,e){ e.stopPropagation(); if(confirm("Supprimer ?")){ delete app.projects[cP].rubs[k]; app.projects[cP].ord=app.projects[cP].ord.filter(x=>x!==k); sData(); if(cB===k)cB=null; if(app.projects[cP].ord.length)oBat(app.projects[cP].ord[0]); else {cB=null;rCont();} rSide(); } }
 function oBat(k){ cB=k; rSide(); rCont(); }
-
-// --- 4. AFFICHAGE ET LOGIQUE DE TRI DES PHOTOS ---
-function rCont(){ 
-    const a=document.getElementById('area-content'); a.innerHTML=''; 
-    document.getElementById('lbl-bat').innerText=cB||"Veuillez créer une rubrique";
-    if(!cB) return; 
-    const phs=app.projects[cP].rubs[cB];
-    if(!phs || !phs.length){ a.innerHTML='<div style="text-align:center;color:#555;margin-top:50px;border:2px dashed #333;padding:40px;border-radius:10px;cursor:pointer;" onclick="triggerPhotoInput()">📂 GLISSEZ VOS PHOTOS ICI<br>ou cliquez pour ajouter</div>'; return; }
-    
-    phs.forEach((p,i)=>{
-        const b=document.createElement('div'); 
-        b.className='block';
-        
-        // --- LOGIQUE DRAG & DROP PHOTO INTERNE ---
-        b.draggable = true;
-        
-        // Début du drag : on note qui on bouge
-        b.ondragstart = (e) => { 
-            draggedPhIdx = i; 
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', i); // Nécessaire pour Firefox
-        };
-
-        // Survol : on autorise le drop et on met l'effet visuel
-        b.ondragover = (e) => { 
-            e.preventDefault(); // OBLIGATOIRE pour autoriser le drop
-            if(draggedPhIdx !== null && draggedPhIdx !== i) {
-                b.classList.add('drag-target');
-            }
-        };
-
-        // Quitter survol : on enlève l'effet
-        b.ondragleave = () => { b.classList.remove('drag-target'); };
-
-        // Lâcher (Drop) : le cœur de la réorganisation
-        b.ondrop = (e) => {
-            e.preventDefault();
-            e.stopPropagation(); // EMPÊCHE DE REMONTER À LA ZONE FICHIER (STOP DUPLICATION)
-            b.classList.remove('drag-target');
-
-            // Si c'est bien une photo interne qu'on déplace
-            if(draggedPhIdx !== null && draggedPhIdx !== i) {
-                const list = app.projects[cP].rubs[cB];
-                // On retire l'élément de son ancienne place
-                const item = list.splice(draggedPhIdx, 1)[0];
-                // On l'insère à la nouvelle place
-                list.splice(i, 0, item);
-                
-                sData(); // Sauvegarde
-                rCont(); // Réaffichage
-            }
-            draggedPhIdx = null; // Reset
-        };
-        // -----------------------------------------
-
-        b.innerHTML=`<div class="block-img-area"><img src="${p.src}"><div class="block-tools"><div class="tool-btn" onclick="paint(${i})">✏️</div><div class="tool-btn" style="border-color:#ff4444; color:#ff4444;" onclick="delPh(${i})">🗑️</div></div></div>
-        <div class="block-txt-area"><div class="txt-tools"><button class="txt-btn" onmousedown="fmt('bold',event)">B</button><button class="txt-btn" onmousedown="fmt('italic',event)">I</button><button class="txt-btn" onmousedown="fmt('underline',event)">U</button><button class="txt-btn" onmousedown="fmt('insertUnorderedList',event)">• Liste</button><button class="txt-btn" onmousedown="fmt('foreColor',event,'#ff4444')" style="color:#ff4444">A</button></div>
-        <div class="rich-editor" contenteditable="true" oninput="upTxt(${i},this.innerHTML)">${p.txt||''}</div></div>`;
-        a.appendChild(b);
-    });
-}
-
 function delPh(i){ if(confirm("Supprimer ?")){ app.projects[cP].rubs[cB].splice(i,1); sData(); rCont(); } }
 let tm; function upTxt(i,h){ app.projects[cP].rubs[cB][i].txt=h; clearTimeout(tm); tm=setTimeout(sData,1000); }
 function fmt(c,e,v=null){ e.preventDefault(); document.execCommand(c,false,v); }
