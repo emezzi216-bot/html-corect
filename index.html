@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Studio CCAS | v103 Indéformable</title>
+    <title>Studio CCAS | v104 FINALE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        /* --- THEME EDITEUR (Rien ne change ici, ça marchait bien) --- */
+        /* --- THEME EDITEUR (Cyber pour le confort visuel) --- */
         :root { --bg-dark: #0f111a; --panel: #1a1d2d; --neon: #00f3ff; --gold: #CCA43B; --text-main: #e0e6ed; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--bg-dark); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         * { box-sizing: border-box; outline: none; scrollbar-width: thin; }
@@ -133,7 +133,7 @@
     </div>
 
 <script>
-const DB_N="CCAS_V103_INDESTRUCTIBLE", DB_V=1; let db, cP=null, cB=null, app={projects:{}, sets:{logo:null}};
+const DB_N="CCAS_V104_FINALE", DB_V=1; let db, cP=null, cB=null, app={projects:{}, sets:{logo:null}};
 let draggedBat = null;
 let draggedPhIdx = null;
 
@@ -210,7 +210,16 @@ function sData(){ db.transaction('s','readwrite').objectStore('s').put({id:'d',v
 function lLogo(){ return new Promise(r=>{ const i=document.getElementById('sys-logo'); if(app.sets.logo){uL();r();return;} if(i.complete&&i.naturalWidth){c64(i,b=>{app.sets.logo=b;sData();uL();r()})}else{i.onload=()=>{c64(i,b=>{app.sets.logo=b;sData();uL();r()})};i.onerror=()=>{r()}} }); }
 function uL(){ const l=document.getElementById('app-logo'); if(app.sets.logo){l.src=app.sets.logo;l.style.display='block'} }
 function c64(i,cb){ const c=document.createElement('canvas'); c.width=i.naturalWidth; c.height=i.naturalHeight; c.getContext('2d').drawImage(i,0,0); cb(c.toDataURL()); }
-function rDash(){ document.getElementById('dashboard').style.display='flex'; document.getElementById('studio').style.display='none'; const g=document.getElementById('grid'); g.innerHTML=''; Object.keys(app.projects).sort((a,b)=>app.projects[b].date-app.projects[a].date).forEach(k=>{ const p=app.projects[k]; const d=document.createElement('div'); d.className='project-card'; d.innerHTML=`<div style="position:absolute;top:10px;right:10px;color:#ff4444;font-weight:bold;padding:5px;" onclick="delP('${k}',event)">×</div><div style="font-size:3rem;margin-bottom:10px;filter:grayscale(1);">📁</div><div style="color:white;font-weight:bold;">${p.name}</div><div style="color:#666;font-size:0.8rem;">${new Date(p.date).toLocaleDateString()}</div>`; d.onclick=()=>oProj(k); g.appendChild(d); }); }
+
+function rDash(){ 
+    document.getElementById('dashboard').style.display='flex'; document.getElementById('studio').style.display='none';
+    const g=document.getElementById('grid'); g.innerHTML='';
+    Object.keys(app.projects).sort((a,b)=>app.projects[b].date-app.projects[a].date).forEach(k=>{
+        const p=app.projects[k]; const d=document.createElement('div'); d.className='project-card';
+        d.innerHTML=`<div style="position:absolute;top:10px;right:10px;color:#ff4444;font-weight:bold;padding:5px;" onclick="delP('${k}',event)">×</div><div style="font-size:3rem;margin-bottom:10px;filter:grayscale(1);">📁</div><div style="color:white;font-weight:bold;">${p.name}</div><div style="color:#666;font-size:0.8rem;">${new Date(p.date).toLocaleDateString()}</div>`;
+        d.onclick=()=>oProj(k); g.appendChild(d);
+    });
+}
 function createProj(){ const n=prompt("Nom :"); if(n){ const id='p'+Date.now(); app.projects[id]={name:n,date:Date.now(),rubs:{'Accueil':[]},ord:['Accueil']}; sData(); rDash(); oProj(id); } }
 function delP(id,e){ e.stopPropagation(); if(confirm("Supprimer ?")){ delete app.projects[id]; sData(); rDash(); } }
 function exportBackup(){ const b=new Blob([JSON.stringify(app)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='CCAS_BACKUP.json'; a.click(); }
@@ -233,85 +242,42 @@ function savePaint(){ app.projects[cP].rubs[cB][pIdx].src=cvs.toDataURL('image/j
 function closePaint(){ document.getElementById('paint-modal').style.display='none'; }
 function stressTest() { if(!confirm("Créer 200 photos de test ?")) return; const id = 'p_simu_' + Date.now(); const newProj = { name: "SIMULATION CHARGE (200)", date: Date.now(), rubs: {}, ord: [] }; const cv = document.createElement('canvas'); cv.width=350; cv.height=250; const ctx = cv.getContext('2d'); ctx.fillStyle = "#333"; ctx.fillRect(0,0,350,250); ctx.fillStyle = "#CCA43B"; ctx.font = "bold 30px Arial"; ctx.fillText("SIMULATION", 80, 130); const dImg = cv.toDataURL('image/jpeg', 0.6); const txt = `<div><b>1. Analyse :</b> Test de charge du système.</div><div><b>2. Performance :</b> Vérification scrollbar.</div><div><b>3. Rendu :</b> Test des polices élégantes.</div><div><b>4. Note :</b> Tout semble nominal.</div><div><b>5. Extra :</b> CEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.</div>`; for(let i=1; i<=25; i++) { const b="Zone "+i; newProj.ord.push(b); newProj.rubs[b]=[]; for(let j=1; j<=8; j++) newProj.rubs[b].push({src: dImg, txt: txt}); } app.projects[id] = newProj; sData(); rDash(); }
 
-// --- LE ZIP CORRIGÉ AVEC CSS BETON ---
+// --- LE ZIP FINAL (AVEC TEXTE HEADER AJOUTÉ) ---
 function genZip(){ 
     const p=app.projects[cP], z=new JSZip(), l=app.sets.logo||"";
     z.file("BACKUP_SECURITE.json", JSON.stringify({projects:{[cP]:p}, sets:app.sets}));
     const h=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${p.name}</title><style>
     body{margin:0;font-family:'Segoe UI', Tahoma, sans-serif;background:#0A1A3C;color:#fff;overflow:hidden; height:100vh; width:100vw;}
-    
-    /* 1. SIDEBAR FIXE - NE BOUGE JAMAIS */
-    #s {
-        position: fixed; left: 0; top: 0; bottom: 0;
-        width: 300px;
-        background: #050E24;
-        border-right: 3px solid #CCA43B;
-        z-index: 100;
-        display: flex; flex-direction: column;
-        box-shadow: 4px 0 15px rgba(0,0,0,0.5);
-    }
-    
-    /* 2. CONTENU PRINCIPAL - DECALÉ A DROITE */
-    #v {
-        margin-left: 300px; /* Espace pour la sidebar */
-        width: calc(100% - 300px);
-        height: 100vh;
-        display: flex; flex-direction: column;
-        position: relative;
-        background: radial-gradient(circle at center,#142850,#0A1A3C);
-    }
-    
-    .head{padding:30px 20px;text-align:center;border-bottom:1px solid #1f2d40;}
-    .head b {font-size: 1.3rem; color:#CCA43B; text-transform:uppercase; letter-spacing: 1px;}
-    #m{flex:1;overflow-y:auto}
+    /* 1. SIDEBAR FIXE */
+    #s {position: fixed; left: 0; top: 0; bottom: 0; width: 300px; background: #050E24; border-right: 3px solid #CCA43B; z-index: 100; display: flex; flex-direction: column; box-shadow: 4px 0 15px rgba(0,0,0,0.5);}
+    /* 2. CONTENU PRINCIPAL */
+    #v {margin-left: 300px; width: calc(100% - 300px); height: 100vh; display: flex; flex-direction: column; position: relative; background: radial-gradient(circle at center,#142850,#0A1A3C);}
+    /* 3. HEADER AVEC TEXTE AJOUTÉ */
+    .head { padding: 20px; border-bottom: 1px solid #1f2d40; display: flex; align-items: center; gap: 15px; }
+    .head-txt { font-size: 10px; font-weight: bold; color: #CCA43B; text-transform: uppercase; line-height: 1.2; text-align: left; }
+    #m { flex:1; overflow-y: auto; }
     button{display:block;width:100%;padding:18px 25px;background:none;border:none;color:#8E8E93;text-align:left;cursor:pointer;border-bottom:1px solid #111;transition:0.3s;font-size:14px; font-family:'Segoe UI', sans-serif;}
     button:hover{background:#111;color:#fff;padding-left:30px;}
     button.act{color:#CCA43B;font-weight:bold;border-left:4px solid #CCA43B;background:rgba(204,164,59,0.1)}
-
-    #f {
-        flex: 1; 
-        display: flex; justify-content: center; align-items: center; 
-        position: relative; 
-        padding: 20px;
-        overflow: hidden; /* Important pour pas que l'image sorte */
-    }
-
-    /* 3. CADRE FIXE */
-    .frame-container {
-        width: 90%; 
-        max-width: 1200px;
-        aspect-ratio: 16/9;
-        max-height: 75vh;
-        border: 5px solid #CCA43B;
-        background: #000;
-        box-shadow: 0 15px 50px rgba(0,0,0,0.5);
-        display: flex; justify-content: center; align-items: center;
-    }
+    #f {flex: 1; display: flex; justify-content: center; align-items: center; position: relative; padding: 20px; overflow: hidden;}
+    .frame-container {width: 90%; max-width: 1200px; aspect-ratio: 16/9; max-height: 75vh; border: 5px solid #CCA43B; background: #000; box-shadow: 0 15px 50px rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center;}
     .frame-container img { width: 100%; height: 100%; object-fit: contain; }
-
     .nav-btn{position:absolute;top:50%;transform:translateY(-50%);font-size:30px;cursor:pointer;width:50px;height:50px;background:rgba(10,26,60,0.8);color:#CCA43B;border:2px solid #CCA43B;border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:20;transition:0.2s;}
     .nav-btn:hover{background:#CCA43B;color:#000;}
     .p{left:20px} .n{right:20px}
-    
-    /* 4. TEXTE QUI NE CASSE RIEN */
-    #i {
-        height: 180px; 
-        background: rgba(5,14,36,0.95); 
-        color: #fff; 
-        padding: 20px 40px; 
-        overflow-y: auto; 
-        border-top: 4px solid #CCA43B; 
-        z-index: 15;
-        
-        /* MAGIE POUR LE TEXTE LONG */
-        word-wrap: break-word; 
-        overflow-wrap: break-word;
-    }
+    #i {height: 180px; background: rgba(5,14,36,0.95); color: #fff; padding: 20px 40px; overflow-y: auto; border-top: 4px solid #CCA43B; z-index: 15; word-wrap: break-word; overflow-wrap: break-word;}
     #t{color:#CCA43B;margin:0 0 10px 0;text-transform:uppercase;font-weight:bold;font-size:1.1rem;letter-spacing:1px;border-bottom:1px solid #1f2d40;padding-bottom:5px;display:inline-block}
     #d{font-size:16px;line-height:1.5;font-weight:300;color:#e0e6ed;}
     #d b {font-weight:700; color:#fff;}
     </style></head><body>
-    <div id="s"><div class="head">${l?'<img src="'+l+'" style="height:55px;margin-bottom:15px"><br>':''}<b>${p.name}</b></div><div id="m"></div></div>
+    <div id="s">
+        <div class="head">
+            ${l?'<img src="'+l+'" style="width:50px; height:auto;">':''}
+            <div class="head-txt">DIRECTION DES FINANCES<br>ET DES MOYENS GÉNÉRAUX<br>DU CCAS</div>
+        </div>
+        <div style="padding:10px 20px; text-align:center; color:white; font-size:1.2rem; font-weight:bold; border-bottom:1px solid #1f2d40;">${p.name}</div>
+        <div id="m"></div>
+    </div>
     <div id="v"><div id="f"><div class="nav-btn p" onclick="mv(-1)">❮</div><div class="frame-container"><img id="img"></div><div class="nav-btn n" onclick="mv(1)">❯</div></div><div id="i"><div id="t"></div><div id="d"></div></div></div>
     <script>const d=${JSON.stringify(p.rubs)}, o=${JSON.stringify(p.ord)}; let cB=o[0], cI=0; function r(){document.getElementById('m').innerHTML=o.map(k=>'<button onclick="c(\\''+k+'\\')" class="'+(k==cB?'act':'')+'">'+k+'</button>').join('');const ps=d[cB];if(!ps||!ps.length){document.getElementById('img').src='';document.getElementById('t').innerText=cB;document.getElementById('d').innerHTML='<i style="color:#666">Aucune photo</i>';return}document.getElementById('img').src=ps[cI].src;document.getElementById('t').innerText=cB;document.getElementById('d').innerHTML=ps[cI].txt;}function c(k){cB=k;cI=0;r()}function mv(v){const ps=d[cB];if(ps){cI=(cI+v+ps.length)%ps.length;r()}}window.onload=r;document.addEventListener('keydown',e=>{if(e.key==="ArrowRight")mv(1);if(e.key==="ArrowLeft")mv(-1)});<\/script></body></html>`;
     z.file(p.name+".html",h); z.generateAsync({type:"blob"}).then(c=>{const a=document.createElement('a'); a.href=URL.createObjectURL(c); a.download=p.name+".zip"; a.click()}); 
