@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Studio CCAS | v102 Cadre Fixe</title>
+    <title>Studio CCAS | v103 Indéformable</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        /* --- THEME EDITEUR (Garde le mode Cyber pour le travail) --- */
+        /* --- THEME EDITEUR (Rien ne change ici, ça marchait bien) --- */
         :root { --bg-dark: #0f111a; --panel: #1a1d2d; --neon: #00f3ff; --gold: #CCA43B; --text-main: #e0e6ed; }
         body { font-family: 'Segoe UI', sans-serif; margin: 0; background: var(--bg-dark); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         * { box-sizing: border-box; outline: none; scrollbar-width: thin; }
@@ -47,13 +47,8 @@
         .content-area { flex: 1; overflow-y: auto; padding: 40px; display: flex; flex-direction: column; align-items: center; gap: 30px; border: 2px dashed transparent; }
         .content-area.file-drag-over { border-color: var(--neon); background: rgba(0, 243, 255, 0.05); }
 
-        /* BLOC PHOTO (SEULEMENT POUR L'ÉDITEUR) */
-        .block { 
-            width: 100%; max-width: 950px; height: 280px; flex-shrink: 0; 
-            background: var(--panel); border: 1px solid #334155; border-radius: 6px; 
-            display: flex; overflow: hidden; position: relative; transition: transform 0.2s;
-            cursor: grab;
-        }
+        /* BLOC PHOTO */
+        .block { width: 100%; max-width: 950px; height: 280px; flex-shrink: 0; background: var(--panel); border: 1px solid #334155; border-radius: 6px; display: flex; overflow: hidden; position: relative; transition: transform 0.2s; cursor: grab; }
         .block:active { cursor: grabbing; box-shadow: 0 5px 20px rgba(0,0,0,0.5); transform: scale(1.01); }
         .block.reorder-target { border: 2px dashed var(--gold); opacity: 0.6; }
 
@@ -63,7 +58,6 @@
         .txt-tools { display: flex; gap: 5px; padding: 8px; background: rgba(0,0,0,0.2); border-bottom: 1px solid #334155; flex-shrink: 0; }
         .txt-btn { background: #2a2f45; border: 1px solid #475569; color: #fff; cursor: pointer; border-radius: 3px; font-weight: bold; font-size: 12px; padding: 4px 8px; }
         .rich-editor { flex: 1; overflow-y: auto; padding: 15px; font-size: 0.95rem; line-height: 1.5; color: #e0e6ed; outline: none; cursor: text; }
-        
         .block-tools { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; opacity: 0; transition: 0.2s; }
         .block-img-area:hover .block-tools { opacity: 1; }
         .tool-btn { background: rgba(0,0,0,0.8); color: var(--neon); border: 1px solid var(--neon); width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 4px; cursor: pointer; font-size: 16px; }
@@ -139,25 +133,21 @@
     </div>
 
 <script>
-const DB_N="CCAS_V102_FIXED_FRAME", DB_V=1; let db, cP=null, cB=null, app={projects:{}, sets:{logo:null}};
+const DB_N="CCAS_V103_INDESTRUCTIBLE", DB_V=1; let db, cP=null, cB=null, app={projects:{}, sets:{logo:null}};
 let draggedBat = null;
 let draggedPhIdx = null;
 
 window.onload=async()=>{ await iDB(); await lLogo(); rDash(); initDragDrop(); };
 
-// --- DRAG & DROP ROBUSTE ---
+// --- LOGIQUE PHOTO ---
 function triggerPhotoInput() {
     if(!cB) { alert("⚠️ Sélectionnez d'abord une rubrique !"); return; }
     document.getElementById('inp-photos').click();
 }
 function initDragDrop() {
     const area = document.getElementById('area-content');
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
-        area.addEventListener(e, (ev) => { ev.preventDefault(); ev.stopPropagation(); }, false);
-    });
-    area.addEventListener('dragover', (e) => {
-        if (draggedPhIdx === null) area.classList.add('file-drag-over');
-    });
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => area.addEventListener(e, (ev) => { ev.preventDefault(); ev.stopPropagation(); }, false));
+    area.addEventListener('dragover', (e) => { if (draggedPhIdx === null) area.classList.add('file-drag-over'); });
     area.addEventListener('dragleave', () => area.classList.remove('file-drag-over'));
     area.addEventListener('drop', (e) => {
         area.classList.remove('file-drag-over');
@@ -220,121 +210,110 @@ function sData(){ db.transaction('s','readwrite').objectStore('s').put({id:'d',v
 function lLogo(){ return new Promise(r=>{ const i=document.getElementById('sys-logo'); if(app.sets.logo){uL();r();return;} if(i.complete&&i.naturalWidth){c64(i,b=>{app.sets.logo=b;sData();uL();r()})}else{i.onload=()=>{c64(i,b=>{app.sets.logo=b;sData();uL();r()})};i.onerror=()=>{r()}} }); }
 function uL(){ const l=document.getElementById('app-logo'); if(app.sets.logo){l.src=app.sets.logo;l.style.display='block'} }
 function c64(i,cb){ const c=document.createElement('canvas'); c.width=i.naturalWidth; c.height=i.naturalHeight; c.getContext('2d').drawImage(i,0,0); cb(c.toDataURL()); }
-
-function rDash(){ 
-    document.getElementById('dashboard').style.display='flex'; document.getElementById('studio').style.display='none';
-    const g=document.getElementById('grid'); g.innerHTML='';
-    Object.keys(app.projects).sort((a,b)=>app.projects[b].date-app.projects[a].date).forEach(k=>{
-        const p=app.projects[k]; const d=document.createElement('div'); d.className='project-card';
-        d.innerHTML=`<div style="position:absolute;top:10px;right:10px;color:#ff4444;font-weight:bold;padding:5px;" onclick="delP('${k}',event)">×</div><div style="font-size:3rem;margin-bottom:10px;filter:grayscale(1);">📁</div><div style="color:white;font-weight:bold;">${p.name}</div><div style="color:#666;font-size:0.8rem;">${new Date(p.date).toLocaleDateString()}</div>`;
-        d.onclick=()=>oProj(k); g.appendChild(d);
-    });
-}
+function rDash(){ document.getElementById('dashboard').style.display='flex'; document.getElementById('studio').style.display='none'; const g=document.getElementById('grid'); g.innerHTML=''; Object.keys(app.projects).sort((a,b)=>app.projects[b].date-app.projects[a].date).forEach(k=>{ const p=app.projects[k]; const d=document.createElement('div'); d.className='project-card'; d.innerHTML=`<div style="position:absolute;top:10px;right:10px;color:#ff4444;font-weight:bold;padding:5px;" onclick="delP('${k}',event)">×</div><div style="font-size:3rem;margin-bottom:10px;filter:grayscale(1);">📁</div><div style="color:white;font-weight:bold;">${p.name}</div><div style="color:#666;font-size:0.8rem;">${new Date(p.date).toLocaleDateString()}</div>`; d.onclick=()=>oProj(k); g.appendChild(d); }); }
 function createProj(){ const n=prompt("Nom :"); if(n){ const id='p'+Date.now(); app.projects[id]={name:n,date:Date.now(),rubs:{'Accueil':[]},ord:['Accueil']}; sData(); rDash(); oProj(id); } }
 function delP(id,e){ e.stopPropagation(); if(confirm("Supprimer ?")){ delete app.projects[id]; sData(); rDash(); } }
 function exportBackup(){ const b=new Blob([JSON.stringify(app)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='CCAS_BACKUP.json'; a.click(); }
 function importDB(i){ const f=i.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>{ if(confirm("Importer ?")){ const j=JSON.parse(e.target.result); app.projects={...app.projects,...j.projects}; sData(); rDash(); }}; r.readAsText(f); i.value=''; }
-
 function oProj(id){ cP=id; document.getElementById('dashboard').style.display='none'; document.getElementById('studio').style.display='flex'; document.getElementById('lbl-proj').innerText=app.projects[id].name; if(!app.projects[id].ord)app.projects[id].ord=Object.keys(app.projects[id].rubs); const f=app.projects[id].ord[0]||''; if(f)oBat(f);else addBat(); rSide(); }
 function renProj(){ const n=prompt("Renommer :",app.projects[cP].name); if(n){app.projects[cP].name=n;document.getElementById('lbl-proj').innerText=n;sData();} }
 function goHome(){ cP=null; rDash(); }
-
-function rSide(){ 
-    const l=document.getElementById('list-bat'); l.innerHTML=''; 
-    app.projects[cP].ord.forEach(k=>{ 
-        const d=document.createElement('div'); d.className='bat-item '+(cB===k?'active':''); 
-        d.innerHTML=`<span>${k}</span><span onclick="delBat('${k}',event)" style="color:#ff4444;padding:0 5px;">×</span>`;
-        d.draggable=true;
-        d.ondragstart=(e)=>{draggedBat=k;e.dataTransfer.effectAllowed='move'};
-        d.ondragover=(e)=>{e.preventDefault();d.classList.add('drag-target')};
-        d.ondragleave=()=>{d.classList.remove('drag-target')};
-        d.ondrop=(e)=>{e.preventDefault();d.classList.remove('drag-target');if(draggedBat&&draggedBat!==k){const o=app.projects[cP].ord,old=o.indexOf(draggedBat),nw=o.indexOf(k);o.splice(old,1);o.splice(nw,0,draggedBat);sData();rSide()}};
-        d.onclick=()=>oBat(k); l.appendChild(d); 
-    }); 
-}
+function rSide(){ const l=document.getElementById('list-bat'); l.innerHTML=''; app.projects[cP].ord.forEach(k=>{ const d=document.createElement('div'); d.className='bat-item '+(cB===k?'active':''); d.innerHTML=`<span>${k}</span><span onclick="delBat('${k}',event)" style="color:#ff4444;padding:0 5px;">×</span>`; d.draggable=true; d.ondragstart=(e)=>{draggedBat=k;e.dataTransfer.effectAllowed='move'}; d.ondragover=(e)=>{e.preventDefault();d.classList.add('drag-target')}; d.ondragleave=()=>{d.classList.remove('drag-target')}; d.ondrop=(e)=>{e.preventDefault();d.classList.remove('drag-target');if(draggedBat&&draggedBat!==k){const o=app.projects[cP].ord,old=o.indexOf(draggedBat),nw=o.indexOf(k);o.splice(old,1);o.splice(nw,0,draggedBat);sData();rSide()}}; d.onclick=()=>oBat(k); l.appendChild(d); }); }
 function addBat(){ const n=prompt("Nom rubrique :"); if(n&&!app.projects[cP].rubs[n]){ app.projects[cP].rubs[n]=[]; app.projects[cP].ord.push(n); sData(); oBat(n); rSide(); } }
 function delBat(k,e){ e.stopPropagation(); if(confirm("Supprimer ?")){ delete app.projects[cP].rubs[k]; app.projects[cP].ord=app.projects[cP].ord.filter(x=>x!==k); sData(); if(cB===k)cB=null; if(app.projects[cP].ord.length)oBat(app.projects[cP].ord[0]); else {cB=null;rCont();} rSide(); } }
 function oBat(k){ cB=k; rSide(); rCont(); }
 function delPh(i){ if(confirm("Supprimer ?")){ app.projects[cP].rubs[cB].splice(i,1); sData(); rCont(); } }
 let tm; function upTxt(i,h){ app.projects[cP].rubs[cB][i].txt=h; clearTimeout(tm); tm=setTimeout(sData,1000); }
 function fmt(c,e,v=null){ e.preventDefault(); document.execCommand(c,false,v); }
-
-// --- PAINT ---
-let pIdx, cvs, ctxPaint, pImg, isD=false, pTool='rect', sX, sY;
 function paint(i){ pIdx=i; document.getElementById('paint-modal').style.display='flex'; cvs=document.getElementById('cvs'); ctxPaint=cvs.getContext('2d'); pImg=new Image(); pImg.onload=()=>{const mw=window.innerWidth*0.9, mh=window.innerHeight*0.8; let w=pImg.width, h=pImg.height, r=Math.min(mw/w, mh/h); cvs.width=w; cvs.height=h; cvs.style.width=(w*r)+'px'; cvs.style.height=(h*r)+'px'; ctxPaint.drawImage(pImg,0,0);}; pImg.src=app.projects[cP].rubs[cB][i].src; cvs.onmousedown=sd; cvs.onmousemove=dd; cvs.onmouseup=ed; }
 function sd(e){ isD=true; const r=cvs.getBoundingClientRect(), x=(e.clientX-r.left)*(cvs.width/r.width), y=(e.clientY-r.top)*(cvs.height/r.height); sX=x; sY=y; ctxPaint.beginPath(); ctxPaint.strokeStyle=document.getElementById('p-col').value; ctxPaint.lineWidth=document.getElementById('p-siz').value; if(pTool==='free')ctxPaint.moveTo(sX,sY); }
 function dd(e){ if(!isD)return; const r=cvs.getBoundingClientRect(), x=(e.clientX-r.left)*(cvs.width/r.width), y=(e.clientY-r.top)*(cvs.height/r.height); if(pTool==='free'){ctxPaint.lineTo(x,y); ctxPaint.stroke();} }
 function ed(e){ if(!isD)return; isD=false; const r=cvs.getBoundingClientRect(), x=(e.clientX-r.left)*(cvs.width/r.width), y=(e.clientY-r.top)*(cvs.height/r.height), w=x-sX, h=y-sY; ctxPaint.beginPath(); if(pTool==='rect')ctxPaint.strokeRect(sX,sY,w,h); else if(pTool==='arrow'){const a=Math.atan2(h,w),l=30; ctxPaint.moveTo(sX,sY); ctxPaint.lineTo(x,y); ctxPaint.lineTo(x-l*Math.cos(a-Math.PI/6),y-l*Math.sin(a-Math.PI/6)); ctxPaint.moveTo(x,y); ctxPaint.lineTo(x-l*Math.cos(a+Math.PI/6),y-l*Math.sin(a+Math.PI/6)); ctxPaint.stroke();} }
 function savePaint(){ app.projects[cP].rubs[cB][pIdx].src=cvs.toDataURL('image/jpeg',0.9); sData(); rCont(); closePaint(); }
 function closePaint(){ document.getElementById('paint-modal').style.display='none'; }
-function stressTest() { if(!confirm("Créer 200 photos de test ?")) return; const id = 'p_simu_' + Date.now(); const newProj = { name: "SIMULATION CHARGE (200)", date: Date.now(), rubs: {}, ord: [] }; const cv = document.createElement('canvas'); cv.width=350; cv.height=250; const ctx = cv.getContext('2d'); ctx.fillStyle = "#333"; ctx.fillRect(0,0,350,250); ctx.fillStyle = "#CCA43B"; ctx.font = "bold 30px Arial"; ctx.fillText("SIMULATION", 80, 130); const dImg = cv.toDataURL('image/jpeg', 0.6); const txt = `<div><b>1. Analyse :</b> Test de charge du système.</div><div><b>2. Performance :</b> Vérification scrollbar.</div><div><b>3. Rendu :</b> Test des polices élégantes.</div><div><b>4. Note :</b> Tout semble nominal.</div><div><b>5. Extra :</b> Ligne supplémentaire.</div>`; for(let i=1; i<=25; i++) { const b="Zone "+i; newProj.ord.push(b); newProj.rubs[b]=[]; for(let j=1; j<=8; j++) newProj.rubs[b].push({src: dImg, txt: txt}); } app.projects[id] = newProj; sData(); rDash(); }
+function stressTest() { if(!confirm("Créer 200 photos de test ?")) return; const id = 'p_simu_' + Date.now(); const newProj = { name: "SIMULATION CHARGE (200)", date: Date.now(), rubs: {}, ord: [] }; const cv = document.createElement('canvas'); cv.width=350; cv.height=250; const ctx = cv.getContext('2d'); ctx.fillStyle = "#333"; ctx.fillRect(0,0,350,250); ctx.fillStyle = "#CCA43B"; ctx.font = "bold 30px Arial"; ctx.fillText("SIMULATION", 80, 130); const dImg = cv.toDataURL('image/jpeg', 0.6); const txt = `<div><b>1. Analyse :</b> Test de charge du système.</div><div><b>2. Performance :</b> Vérification scrollbar.</div><div><b>3. Rendu :</b> Test des polices élégantes.</div><div><b>4. Note :</b> Tout semble nominal.</div><div><b>5. Extra :</b> CEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE.</div>`; for(let i=1; i<=25; i++) { const b="Zone "+i; newProj.ord.push(b); newProj.rubs[b]=[]; for(let j=1; j<=8; j++) newProj.rubs[b].push({src: dImg, txt: txt}); } app.projects[id] = newProj; sData(); rDash(); }
 
-// --- ZIP & EXPORT (DESIGN CORRIGÉ : BLEU + CADRE BETON) ---
+// --- LE ZIP CORRIGÉ AVEC CSS BETON ---
 function genZip(){ 
     const p=app.projects[cP], z=new JSZip(), l=app.sets.logo||"";
     z.file("BACKUP_SECURITE.json", JSON.stringify({projects:{[cP]:p}, sets:app.sets}));
-    
-    // LE NOUVEAU HTML FINAL AVEC CADRE FIXE
     const h=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${p.name}</title><style>
-    body{margin:0;font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;display:flex;height:100vh;background:#0A1A3C;color:#fff;overflow:hidden}
+    body{margin:0;font-family:'Segoe UI', Tahoma, sans-serif;background:#0A1A3C;color:#fff;overflow:hidden; height:100vh; width:100vw;}
     
-    /* SIDEBAR BLEU NUIT */
-    #s{width:300px;background:#050E24;border-right:3px solid #CCA43B;display:flex;flex-direction:column;box-shadow: 4px 0 15px rgba(0,0,0,0.5); z-index:10;}
+    /* 1. SIDEBAR FIXE - NE BOUGE JAMAIS */
+    #s {
+        position: fixed; left: 0; top: 0; bottom: 0;
+        width: 300px;
+        background: #050E24;
+        border-right: 3px solid #CCA43B;
+        z-index: 100;
+        display: flex; flex-direction: column;
+        box-shadow: 4px 0 15px rgba(0,0,0,0.5);
+    }
+    
+    /* 2. CONTENU PRINCIPAL - DECALÉ A DROITE */
+    #v {
+        margin-left: 300px; /* Espace pour la sidebar */
+        width: calc(100% - 300px);
+        height: 100vh;
+        display: flex; flex-direction: column;
+        position: relative;
+        background: radial-gradient(circle at center,#142850,#0A1A3C);
+    }
+    
     .head{padding:30px 20px;text-align:center;border-bottom:1px solid #1f2d40;}
     .head b {font-size: 1.3rem; color:#CCA43B; text-transform:uppercase; letter-spacing: 1px;}
-    
     #m{flex:1;overflow-y:auto}
     button{display:block;width:100%;padding:18px 25px;background:none;border:none;color:#8E8E93;text-align:left;cursor:pointer;border-bottom:1px solid #111;transition:0.3s;font-size:14px; font-family:'Segoe UI', sans-serif;}
     button:hover{background:#111;color:#fff;padding-left:30px;}
     button.act{color:#CCA43B;font-weight:bold;border-left:4px solid #CCA43B;background:rgba(204,164,59,0.1)}
-    
-    /* VIEWER BLEU CENTRAL */
-    #v{flex:1;display:flex;flex-direction:column;position:relative;background:radial-gradient(circle at center,#142850,#0A1A3C);}
-    /* CONTENEUR PRINCIPAL (Bloqué en overflow) */
-    #f{flex:1;display:flex;justify-content:center;align-items:center;position:relative;padding:20px;overflow:hidden;}
-    
-    /* --- LE CADRE BETON ARME --- */
-    .frame-container {
-        /* On définit une taille MAXIMALE et un RATIO FIXE */
-        width: 100%;
-        max-width: 1100px;
-        aspect-ratio: 16 / 9; /* LE RATIO EST VERROUILLÉ ICI */
-        /* Hauteur max pour ne pas dépasser l'écran */
-        max-height: 70vh;
 
-        /* Style du cadre */
-        border: 5px solid #CCA43B; 
+    #f {
+        flex: 1; 
+        display: flex; justify-content: center; align-items: center; 
+        position: relative; 
+        padding: 20px;
+        overflow: hidden; /* Important pour pas que l'image sorte */
+    }
+
+    /* 3. CADRE FIXE */
+    .frame-container {
+        width: 90%; 
+        max-width: 1200px;
+        aspect-ratio: 16/9;
+        max-height: 75vh;
+        border: 5px solid #CCA43B;
         background: #000;
         box-shadow: 0 15px 50px rgba(0,0,0,0.5);
-        /* Centrage de l'image interne */
         display: flex; justify-content: center; align-items: center;
     }
-
-    /* L'IMAGE DEDANS (S'adapte au cadre, pas l'inverse) */
-    .frame-container img {
-        width: 100%; height: 100%;
-        object-fit: contain; 
-    }
-    /* --------------------------- */
+    .frame-container img { width: 100%; height: 100%; object-fit: contain; }
 
     .nav-btn{position:absolute;top:50%;transform:translateY(-50%);font-size:30px;cursor:pointer;width:50px;height:50px;background:rgba(10,26,60,0.8);color:#CCA43B;border:2px solid #CCA43B;border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:20;transition:0.2s;}
     .nav-btn:hover{background:#CCA43B;color:#000;}
-    .p{left:30px} .n{right:30px}
+    .p{left:20px} .n{right:20px}
     
-    /* TEXTE BAS PROPRE */
-    #i{height:180px;background:rgba(5,14,36,0.95);color:#fff;padding:30px 50px;overflow-y:auto;border-top:4px solid #CCA43B; z-index:15;}
-    #t{color:#CCA43B;margin:0 0 15px 0;text-transform:uppercase;font-weight:bold;font-size:1.1rem;letter-spacing:1px;border-bottom:1px solid #1f2d40;padding-bottom:10px;display:inline-block}
-    #d{font-size:16px;line-height:1.6;font-weight:300;color:#e0e6ed;}
+    /* 4. TEXTE QUI NE CASSE RIEN */
+    #i {
+        height: 180px; 
+        background: rgba(5,14,36,0.95); 
+        color: #fff; 
+        padding: 20px 40px; 
+        overflow-y: auto; 
+        border-top: 4px solid #CCA43B; 
+        z-index: 15;
+        
+        /* MAGIE POUR LE TEXTE LONG */
+        word-wrap: break-word; 
+        overflow-wrap: break-word;
+    }
+    #t{color:#CCA43B;margin:0 0 10px 0;text-transform:uppercase;font-weight:bold;font-size:1.1rem;letter-spacing:1px;border-bottom:1px solid #1f2d40;padding-bottom:5px;display:inline-block}
+    #d{font-size:16px;line-height:1.5;font-weight:300;color:#e0e6ed;}
     #d b {font-weight:700; color:#fff;}
     </style></head><body>
     <div id="s"><div class="head">${l?'<img src="'+l+'" style="height:55px;margin-bottom:15px"><br>':''}<b>${p.name}</b></div><div id="m"></div></div>
-    <div id="v"><div id="f"><div class="nav-btn p" onclick="mv(-1)">❮</div>
-    
-    <div class="frame-container"><img id="img"></div>
-    
-    <div class="nav-btn n" onclick="mv(1)">❯</div></div><div id="i"><div id="t"></div><div id="d"></div></div></div>
+    <div id="v"><div id="f"><div class="nav-btn p" onclick="mv(-1)">❮</div><div class="frame-container"><img id="img"></div><div class="nav-btn n" onclick="mv(1)">❯</div></div><div id="i"><div id="t"></div><div id="d"></div></div></div>
     <script>const d=${JSON.stringify(p.rubs)}, o=${JSON.stringify(p.ord)}; let cB=o[0], cI=0; function r(){document.getElementById('m').innerHTML=o.map(k=>'<button onclick="c(\\''+k+'\\')" class="'+(k==cB?'act':'')+'">'+k+'</button>').join('');const ps=d[cB];if(!ps||!ps.length){document.getElementById('img').src='';document.getElementById('t').innerText=cB;document.getElementById('d').innerHTML='<i style="color:#666">Aucune photo</i>';return}document.getElementById('img').src=ps[cI].src;document.getElementById('t').innerText=cB;document.getElementById('d').innerHTML=ps[cI].txt;}function c(k){cB=k;cI=0;r()}function mv(v){const ps=d[cB];if(ps){cI=(cI+v+ps.length)%ps.length;r()}}window.onload=r;document.addEventListener('keydown',e=>{if(e.key==="ArrowRight")mv(1);if(e.key==="ArrowLeft")mv(-1)});<\/script></body></html>`;
-    
     z.file(p.name+".html",h); z.generateAsync({type:"blob"}).then(c=>{const a=document.createElement('a'); a.href=URL.createObjectURL(c); a.download=p.name+".zip"; a.click()}); 
 }
 </script>
